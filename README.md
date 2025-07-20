@@ -31,6 +31,7 @@ A Model Context Protocol (MCP) server implementation for Selenium WebDriver, ena
 
 - Chrome
 - Firefox
+- MS Edge
 
 ## Use with Goose
 
