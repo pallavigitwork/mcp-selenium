@@ -68,6 +68,20 @@ server.tool(
             let builder = new Builder();
             let driver;
             switch (browser) {
+                case 'chrome': {
+                    const chromeOptions = new ChromeOptions();
+                    if (options.headless) {
+                        chromeOptions.addArguments('--headless=new');
+                    }
+                    if (options.arguments) {
+                        options.arguments.forEach(arg => chromeOptions.addArguments(arg));
+                    }
+                    driver = await builder
+                        .forBrowser('chrome')
+                        .setChromeOptions(chromeOptions)
+                        .build();
+                    break;
+                }
                 case 'edge': {
                     const edgeOptions = new EdgeOptions();
                     if (options.headless) {
@@ -96,20 +110,8 @@ server.tool(
                         .build();
                     break;
                 }
-                case 'chrome':
                 default: {
-                    const chromeOptions = new ChromeOptions();
-                    if (options.headless) {
-                        chromeOptions.addArguments('--headless=new');
-                    }
-                    if (options.arguments) {
-                        options.arguments.forEach(arg => chromeOptions.addArguments(arg));
-                    }
-                    driver = await builder
-                        .forBrowser('chrome')
-                        .setChromeOptions(chromeOptions)
-                        .build();
-                    break;
+                    throw new Error(`Unsupported browser: ${browser}`);
                 }
             }
             const sessionId = `${browser}_${Date.now()}`;
