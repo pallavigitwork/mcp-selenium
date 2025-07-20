@@ -7,6 +7,7 @@ import pkg from 'selenium-webdriver';
 const { Builder, By, Key, until, Actions } = pkg;
 import { Options as ChromeOptions } from 'selenium-webdriver/chrome.js';
 import { Options as FirefoxOptions } from 'selenium-webdriver/firefox.js';
+import { Options as EdgeOptions } from 'selenium-webdriver/edge.js';
 
 
 // Create an MCP server
@@ -59,42 +60,60 @@ server.tool(
     "start_browser",
     "launches browser",
     {
-        browser: z.enum(["chrome", "firefox"]).describe("Browser to launch (chrome or firefox)"),
+        browser: z.enum(["chrome", "firefox", "edge"]).describe("Browser to launch (chrome or firefox or microsoft edge)"),
         options: browserOptionsSchema
     },
     async ({ browser, options = {} }) => {
         try {
             let builder = new Builder();
             let driver;
-
-            if (browser === 'chrome') {
-                const chromeOptions = new ChromeOptions();
-                if (options.headless) {
-                    chromeOptions.addArguments('--headless=new');
+            switch (browser) {
+                case 'chrome': {
+                    const chromeOptions = new ChromeOptions();
+                    if (options.headless) {
+                        chromeOptions.addArguments('--headless=new');
+                    }
+                    if (options.arguments) {
+                        options.arguments.forEach(arg => chromeOptions.addArguments(arg));
+                    }
+                    driver = await builder
+                        .forBrowser('chrome')
+                        .setChromeOptions(chromeOptions)
+                        .build();
+                    break;
                 }
-                if (options.arguments) {
-                    options.arguments.forEach(arg => chromeOptions.addArguments(arg));
+                case 'edge': {
+                    const edgeOptions = new EdgeOptions();
+                    if (options.headless) {
+                        edgeOptions.addArguments('--headless=new');
+                    }
+                    if (options.arguments) {
+                        options.arguments.forEach(arg => edgeOptions.addArguments(arg));
+                    }
+                    driver = await builder
+                        .forBrowser('edge')
+                        .setEdgeOptions(edgeOptions)
+                        .build();
+                    break;
                 }
-                
-                driver = await builder
-                    .forBrowser('chrome')
-                    .setChromeOptions(chromeOptions)
-                    .build();
-            } else {
-                const firefoxOptions = new FirefoxOptions();
-                if (options.headless) {
-                    firefoxOptions.addArguments('--headless');
+                case 'firefox': {
+                    const firefoxOptions = new FirefoxOptions();
+                    if (options.headless) {
+                        firefoxOptions.addArguments('--headless');
+                    }
+                    if (options.arguments) {
+                        options.arguments.forEach(arg => firefoxOptions.addArguments(arg));
+                    }
+                    driver = await builder
+                        .forBrowser('firefox')
+                        .setFirefoxOptions(firefoxOptions)
+                        .build();
+                    break;
                 }
-                if (options.arguments) {
-                    options.arguments.forEach(arg => firefoxOptions.addArguments(arg));
+                default: {
+                    throw new Error(`Unsupported browser: ${browser}`);
                 }
-                
-                driver = await builder
-                    .forBrowser('firefox')
-                    .setFirefoxOptions(firefoxOptions)
-                    .build();
             }
-
             const sessionId = `${browser}_${Date.now()}`;
             state.drivers.set(sessionId, driver);
             state.currentSession = sessionId;
@@ -115,7 +134,6 @@ server.tool(
     "navigates to a URL",
     {
         url: z.string().describe("URL to navigate to")
-        
     },
     async ({ url }) => {
         try {
@@ -263,13 +281,10 @@ server.tool(
             const driver = getDriver();
             const sourceLocator = getLocator(by, value);
             const targetLocator = getLocator(targetBy, targetValue);
-            
             const sourceElement = await driver.wait(until.elementLocated(sourceLocator), timeout);
             const targetElement = await driver.wait(until.elementLocated(targetLocator), timeout);
-            
             const actions = driver.actions({ bridge: true });
             await actions.dragAndDrop(sourceElement, targetElement).perform();
-            
             return {
                 content: [{ type: 'text', text: 'Drag and drop completed' }]
             };
@@ -385,7 +400,6 @@ server.tool(
         try {
             const driver = getDriver();
             const screenshot = await driver.takeScreenshot();
-            
             if (outputPath) {
                 const fs = await import('fs');
                 await fs.promises.writeFile(outputPath, screenshot, 'base64');
@@ -437,7 +451,7 @@ server.resource(
     async (uri) => ({
         contents: [{
             uri: uri.href,
-            text: state.currentSession 
+            text: state.currentSession
                 ? `Active browser session: ${state.currentSession}`
                 : "No active browser session"
         }]
