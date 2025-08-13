@@ -222,6 +222,31 @@ server.tool(
 );
 
 server.tool(
+    "clear",
+    "resets content of the element",
+    {
+        ...locatorSchema,
+        text: z.string().describe("Resets content of the element")
+    },
+    async ({ by, value, text, timeout = 10000 }) => {
+        try {
+            const driver = getDriver();
+            const locator = getLocator(by, value);
+            const element = await driver.wait(until.elementLocated(locator), timeout);
+            await element.clear();
+            return {
+                content: [{ type: 'text', text: 'Element value reset' }]
+            };
+        } catch (e) {
+            return {
+                content: [{ type: 'text', text: `Error in reset of the element: ${e.message}` }]
+            };
+        }
+    }
+);
+
+
+server.tool(
     "get_element_text",
     "gets the text() of an element",
     {
